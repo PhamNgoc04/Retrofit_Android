@@ -1,6 +1,8 @@
 package com.example.learnretrofit.ui.viewmodel
 
 import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.learnretrofit.data.model.User
@@ -11,35 +13,64 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class UserViewModel(private val repository: UserRepository) : ViewModel() {
-    private val _user = MutableStateFlow<User?>(null)
-    val user: StateFlow<User?> = _user.asStateFlow()
 
-    private val _historyUsers = MutableStateFlow<List<User>>(emptyList())
-    val historyUsers: StateFlow<List<User>> = _historyUsers.asStateFlow()
+    //Lấy ngẫu nhiên người dùng
+    private val _loginResult = MutableLiveData<String?>()
+    val loginResult: LiveData<String?> = _loginResult
 
-    fun fetchRandomUser() {
+    private val _user = MutableLiveData<User?>()
+    val user: LiveData<User?> = _user
+
+    fun login(email: String, password: String, onSuccess: (Int) -> Unit) {
         viewModelScope.launch {
-            try {
-                val response = repository.getRandomUser()
-                Log.d("API Response", "User Data: ${response.results}")
-
-                if (response.results.isNotEmpty()) {
-                    val newUser = response.results.first()
-                    _user.value = newUser
-                    addUserToHistory(newUser)  // 🔹 Thêm vào lịch sử ngay khi lấy dữ liệu
-                } else {
-                    Log.e("API Error", "Không có dữ liệu user nào trong response")
-                }
-            } catch (e: Exception) {
-                Log.e("API Error", "Lỗi khi lấy dữ liệu: ${e.message}")
+            val response = repository.login(email, password)
+            if (response.isSuccessful) {
+                _loginResult.value = response.body()?.token
+                val userId = (1..12).random() // Chọn ngẫu nhiên ID user từ 1-12
+                fetchUser(userId)
+                onSuccess(userId)
+            } else {
+                _loginResult.value = null
             }
         }
     }
 
-    fun addUserToHistory(user: User) {
+    //Xem lịch sử người dùng
+    private val _history = MutableStateFlow<List<User>>(emptyList())
+    val history: StateFlow<List<User>> = _history.asStateFlow()
+
+    fun fetchUser(userId: Int) {
         viewModelScope.launch {
-            _historyUsers.emit(_historyUsers.value + user)  // 🔹 Dùng emit thay vì `.value =`
-            Log.d("History", "Đã thêm user vào lịch sử: ${user.name.first} ${user.name.last}")
+            val response = repository.getUser(userId)
+            if (response.isSuccessful) {
+                response.body()?.data?.let { user ->
+                    _user.value = user
+                    addToHistory(user) // Lưu vào lịch sử
+                }
+            }
+        }
+    }
+
+    private fun addToHistory(user: User) {
+        val currentList = _history.value ?: emptyList()
+        if (!currentList.any { it.id == user.id }) {
+            _history.value = currentList + user
+        }
+    }
+
+    //Xem chi tiết người dùng
+    private val _userDetail = MutableStateFlow<User?>(null)
+    val userDetail: StateFlow<User?> = _userDetail.asStateFlow()
+
+    fun fetchUserDetail(userId: Int, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            val response = repository.getUser(userId)
+            if (response.isSuccessful) {
+                response.body()?.data?.let { user ->
+                    _userDetail.value = user
+                    onSuccess()
+                }
+            }
         }
     }
 }

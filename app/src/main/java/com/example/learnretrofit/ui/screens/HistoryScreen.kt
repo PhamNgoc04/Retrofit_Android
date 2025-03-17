@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
@@ -13,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,14 +28,14 @@ import com.google.gson.Gson
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(navController: NavController, viewModel: UserViewModel) {
-    val historyList by viewModel.historyUsers.collectAsState(initial = emptyList())
+    val history by viewModel.history.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = "Lịch sử người dùng",
+                        text = "Lịch Sử Người Dùng",
                         fontSize = 22.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -46,27 +48,28 @@ fun HistoryScreen(navController: NavController, viewModel: UserViewModel) {
             )
         }
     ) { padding ->
-        if (historyList.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (history.isEmpty()) {
                 Text(
-                    text = "Không có dữ liệu lịch sử",
+                    text = "Chưa có lịch sử.",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Color.Gray
+                    color = Color.Gray,
+                    modifier = Modifier.padding(top = 20.dp)
                 )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color(0xFFF5F5F5))
-                    .padding(padding)
-            ) {
-                items(historyList) { user ->
-                    HistoryItem(user, navController)
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(history) { user ->
+                        HistoryItem(user, navController)
+                    }
                 }
             }
         }
@@ -75,44 +78,39 @@ fun HistoryScreen(navController: NavController, viewModel: UserViewModel) {
 
 @Composable
 fun HistoryItem(user: User, navController: NavController) {
-    val thumbnailUrl = user.picture?.thumbnail ?: "https://via.placeholder.com/150"
-
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
             .clickable {
-                val userJson = Uri.encode(Gson().toJson(user))
+                val userJson = Uri.encode(Gson().toJson(user)) // Mã hóa JSON
                 navController.navigate("user_detail/$userJson")
             }
-            .background(Color.White)
-            .padding(12.dp)
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = rememberAsyncImagePainter(thumbnailUrl),
-                contentDescription = "User Avatar",
-                modifier = Modifier
-                    .size(55.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, Color.LightGray, CircleShape)
+        Image(
+            painter = rememberAsyncImagePainter(user.avatar),
+            contentDescription = "Avatar",
+            modifier = Modifier
+                .size(60.dp)
+                .clip(CircleShape)
+                .border(2.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                .shadow(4.dp, CircleShape)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Column {
+            Text(
+                text = "${user.first_name} ${user.last_name}",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
             )
-            Spacer(modifier = Modifier.width(10.dp))
-            Column {
-                Text(
-                    text = "${user.name.first} ${user.name.last}",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = user.email,
-                    fontSize = 14.sp,
-                    color = Color.Gray
-                )
-            }
+            Text(
+                text = user.email,
+                fontSize = 14.sp,
+                color = Color.Gray
+            )
         }
-        Spacer(modifier = Modifier.height(10.dp))
-        Divider(color = Color.LightGray, thickness = 1.dp)
     }
 }

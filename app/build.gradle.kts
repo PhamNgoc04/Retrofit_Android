@@ -104,6 +104,9 @@ dependencies {
     // Hilt hỗ trợ ViewModel
     implementation( "androidx.hilt:hilt-navigation-compose:1.0.0")
 
+    implementation ("androidx.compose.runtime:runtime-livedata:1.5.0")
+
+
 
     // Unit Testing & UI Testing
     testImplementation("junit:junit:4.13.2")
